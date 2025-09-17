@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cards collection rules
+    match /cards/{cardId} {
+      // Users can only access their own cards
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      // Allow creation if the user is authenticated and owns the document
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+      // Validate data structure for cards
+      allow write: if validateCardData();
+    }
+
+    // Other items collection rules
+    match /other/{itemId} {
+      // Users can only access their own items
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      // Allow creation if the user is authenticated and owns the document
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+      // Validate data structure for other items
+      allow write: if validateOtherData();
+    }
+
+    // Function to validate card data structure
+    function validateCardData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['userId', 'cardName', 'encryptedBlob']) &&
+             data.keys().hasOnly(['userId', 'cardName', 'encryptedBlob']) &&
+             data.userId is string &&
+             data.cardName is string &&
+             data.encryptedBlob is string &&
+             data.cardName.size() > 0 &&
+             data.cardName.size() <= 100 &&
+             data.encryptedBlob.size() > 0;
+    }
+
+    // Function to validate other items data structure
+    function validateOtherData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['userId', 'itemName', 'encryptedBlob']) &&
+             data.keys().hasOnly(['userId', 'itemName', 'encryptedBlob']) &&
+             data.userId is string &&
+             data.itemName is string &&
+             data.encryptedBlob is string &&
+             data.itemName.size() > 0 &&
+             data.itemName.size() <= 100 &&
+             data.encryptedBlob.size() > 0;
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
