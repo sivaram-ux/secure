@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Secure Vault",
-  description: "Zero-knowledge encrypted personal vault",
+  title: "Firebase Auth Demo",
+  description: "Learning Firebase v9 authentication with Google OAuth tutorial",
 };
 
 export default function RootLayout({

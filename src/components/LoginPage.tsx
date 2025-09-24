@@ -44,24 +44,18 @@ export default function LoginPage() {
 
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-20 w-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mb-6">
+          <div className="mx-auto h-16 w-16 bg-orange-500 rounded-lg flex items-center justify-center mb-6">
             <svg
-              className="h-10 w-10 text-white"
-              fill="none"
-              stroke="currentColor"
+              className="h-8 w-8 text-white"
+              fill="currentColor"
               viewBox="0 0 24 24"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
+              <path d="M12.017 0C8.986.01 6.556.357 4.738 1.137c-.85.364-1.357 1.174-1.357 2.17v7.642c0 4.45 2.902 8.378 7.13 9.95a1.317 1.317 0 00.961 0c4.229-1.572 7.13-5.5 7.13-9.95V3.307c0-.996-.507-1.806-1.357-2.17C17.463.357 15.033.01 12.017 0z"/>
             </svg>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">Secure Vault</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Your personal encrypted storage for sensitive information
+          <h2 className="text-2xl font-semibold text-gray-800">Firebase Auth Demo</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Learning Firebase Authentication Tutorial
           </p>
         </div>
 
@@ -99,8 +93,8 @@ export default function LoginPage() {
           </button>
 
           <div className="mt-6 text-xs text-gray-500 text-center">
-            <p>Zero-knowledge encryption • Client-side only</p>
-            <p className="mt-1">Your data is encrypted before leaving your device</p>
+            <p>Tutorial: Google OAuth Integration</p>
+            <p className="mt-1">Testing Firebase v9 authentication methods</p>
           </div>
         </div>
       </div>
