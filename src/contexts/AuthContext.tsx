@@ -131,21 +131,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Current URL:', window.location.href);
 
       // Provide more specific error information
-      if (error.code === 'auth/internal-error') {
+      if ((error as {code?: string}).code === 'auth/internal-error') {
         console.error('🔍 FIREBASE INTERNAL ERROR DEBUGGING:');
         console.error('1. Check if Google OAuth is enabled in Firebase Console');
         console.error('2. Check if current domain is authorized:', window.location.hostname);
         console.error('3. Check if Web Application OAuth client is configured');
         console.error('4. Try opening in incognito mode');
         alert(`Authentication setup error. Please check browser console for details.\nCurrent domain: ${window.location.hostname}`);
-      } else if (error.code === 'auth/configuration-not-found') {
+      } else if ((error as {code?: string}).code === 'auth/configuration-not-found') {
         console.error('Firebase configuration not found');
         alert('Firebase configuration error. Please check environment variables.');
-      } else if (error.code === 'auth/unauthorized-domain') {
+      } else if ((error as {code?: string}).code === 'auth/unauthorized-domain') {
         console.error('Domain not authorized:', window.location.hostname);
         alert(`Domain "${window.location.hostname}" is not authorized. Add it to Firebase Console.`);
       } else {
-        alert(`Authentication failed: ${error.code} - ${error.message || 'Unknown error'}`);
+        alert(`Authentication failed: ${(error as {code?: string}).code} - ${(error as {message?: string}).message || 'Unknown error'}`);
       }
 
       throw error;
