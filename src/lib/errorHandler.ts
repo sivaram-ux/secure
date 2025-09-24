@@ -2,7 +2,7 @@
 
 interface ErrorDetails {
   userMessage: string;
-  logDetails?: any;
+  logDetails?: unknown;
   code?: string;
 }
 
@@ -17,7 +17,7 @@ const SAFE_ERROR_MESSAGES = {
   UNKNOWN_ERROR: 'An unexpected error occurred. Please try again.',
 };
 
-export function handleSecureError(error: any, context: string): ErrorDetails {
+export function handleSecureError(error: unknown, context: string): ErrorDetails {
   // Log detailed error for debugging (only in development)
   if (process.env.NODE_ENV === 'development') {
     console.error(`[${context}] Error:`, error);
@@ -57,7 +57,7 @@ export function handleSecureError(error: any, context: string): ErrorDetails {
   };
 }
 
-export function showSecureAlert(error: any, context: string): void {
+export function showSecureAlert(error: unknown, context: string): void {
   const { userMessage } = handleSecureError(error, context);
   alert(userMessage);
 }
@@ -66,7 +66,7 @@ export function showSecureAlert(error: any, context: string): void {
 const errorNotificationLimiter = new Map<string, number>();
 const ERROR_NOTIFICATION_COOLDOWN = 5000; // 5 seconds
 
-export function showSecureAlertWithLimit(error: any, context: string): void {
+export function showSecureAlertWithLimit(error: unknown, context: string): void {
   const now = Date.now();
   const lastShown = errorNotificationLimiter.get(context) || 0;
 

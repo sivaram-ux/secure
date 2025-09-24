@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { encryptData, decryptData, secureClipboardCopy } from '@/lib/crypto';
 import OtherForm from './OtherForm';
-import OtherView from './OtherView';
 
 export interface OtherData extends Record<string, unknown> {
   id?: string;
@@ -63,9 +62,9 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
       setDecryptedItems(new Map());
       setIndividuallyViewedItems(new Set());
     }
-  }, [decryptAllMode, globalPasscode, items, pepper]);
+  }, [decryptAllMode, globalPasscode, items, pepper, decryptAllOtherItems]);
 
-  const decryptAllOtherItems = async () => {
+  const decryptAllOtherItems = React.useCallback(async () => {
     if (!globalPasscode || !pepper) return;
 
     const newDecryptedItems = new Map<string, OtherData>();
@@ -80,7 +79,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     }
 
     setDecryptedItems(newDecryptedItems);
-  };
+  }, [globalPasscode, pepper, items]);
 
   const requirePasscode = (action: () => void) => {
     // If decrypt all is active, we already have the passcode

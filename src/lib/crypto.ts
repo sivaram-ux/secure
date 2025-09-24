@@ -184,7 +184,7 @@ export function secureClearString(str: string): void {
       // This doesn't actually clear the original string from memory in JS
       // but it's a best practice attempt
       str = cleared;
-    } catch (error) {
+    } catch {
       // Ignore errors in memory clearing
     }
   }
@@ -197,7 +197,7 @@ export function secureClearArray(arr: Uint8Array): void {
 }
 
 // Memory cleanup for sensitive objects
-export function secureClearObject(obj: any): void {
+export function secureClearObject(obj: Record<string, unknown>): void {
   if (obj && typeof obj === 'object') {
     Object.keys(obj).forEach(key => {
       if (typeof obj[key] === 'string') {

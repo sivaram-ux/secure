@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { encryptData, decryptData, secureClipboardCopy } from '@/lib/crypto';
 import { showSecureAlert } from '@/lib/errorHandler';
 import CardForm from './CardForm';
-import CardView from './CardView';
 
 export interface CardData extends Record<string, unknown> {
   id?: string;
@@ -68,9 +67,9 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
       setDecryptedCards(new Map());
       setIndividuallyViewedCards(new Set());
     }
-  }, [decryptAllMode, globalPasscode, cards, pepper]);
+  }, [decryptAllMode, globalPasscode, cards, pepper, decryptAllCards]);
 
-  const decryptAllCards = async () => {
+  const decryptAllCards = React.useCallback(async () => {
     if (!globalPasscode || !pepper) return;
 
     const newDecryptedCards = new Map<string, CardData>();
@@ -85,7 +84,7 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     }
 
     setDecryptedCards(newDecryptedCards);
-  };
+  }, [globalPasscode, pepper, cards]);
 
   const requirePasscode = (action: (passcode: string) => void) => {
     console.log('requirePasscode called:', { decryptAllMode, hasGlobalPasscode: !!globalPasscode, hasPasscode: !!passcode });

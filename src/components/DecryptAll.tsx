@@ -199,7 +199,7 @@ export default function DecryptAll({ onClose }: DecryptAllProps) {
                   <div>
                     <h4 className="text-sm font-medium text-yellow-800">Security Warning</h4>
                     <p className="text-sm text-yellow-700 mt-1">
-                      This will decrypt and display all your sensitive information. Only proceed if you're in a secure environment.
+                      This will decrypt and display all your sensitive information. Only proceed if you&apos;re in a secure environment.
                     </p>
                   </div>
                 </div>

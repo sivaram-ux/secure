@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       clearInterval(sessionInterval);
     };
-  }, [user, lastActivity]);
+  }, [user, lastActivity, SESSION_TIMEOUT]);
 
   const signInWithGoogle = async () => {
     try {
@@ -115,18 +115,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const result = await signInWithPopup(auth, googleProvider);
         console.log('Sign-in successful:', result.user?.email);
-      } catch (popupError: any) {
-        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
+      } catch (popupError: unknown) {
+        if ((popupError as {code?: string}).code === 'auth/popup-blocked' || (popupError as {code?: string}).code === 'auth/popup-closed-by-user') {
           console.log('Popup blocked or closed, trying redirect method...');
           await signInWithRedirect(auth, googleProvider);
           return; // signInWithRedirect doesn't return immediately
         }
         throw popupError; // Re-throw other errors
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('=== DETAILED SIGN IN ERROR ===');
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
+      console.error('Error code:', (error as {code?: string}).code);
+      console.error('Error message:', (error as {message?: string}).message);
       console.error('Full error:', error);
       console.error('Current URL:', window.location.href);
 

@@ -7,7 +7,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { secureClearObject } from '@/lib/crypto';
 import CardManager from './CardManager';
 import OtherManager from './OtherManager';
-import DecryptAll from './DecryptAll';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -209,7 +208,7 @@ export default function Dashboard() {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700 dark:text-red-300">
-                  <strong>Security Alert:</strong> All sensitive information is decrypted and visible. Click "Lock All" to hide sensitive data again.
+                  <strong>Security Alert:</strong> All sensitive information is decrypted and visible. Click &quot;Lock All&quot; to hide sensitive data again.
                 </p>
               </div>
             </div>
