@@ -15,20 +15,19 @@ function generateRandomBytes(length: number): Uint8Array {
 }
 
 // Convert Uint8Array to base64
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  const binary = String.fromCharCode.apply(null, Array.from(bytes));
+function arrayBufferToBase64(buffer: Uint8Array): string {
+  const binary = String.fromCharCode.apply(null, Array.from(buffer));
   return btoa(binary);
 }
 
 // Convert base64 to Uint8Array
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
+function base64ToArrayBuffer(base64: string): Uint8Array {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
   }
-  return bytes.buffer;
+  return bytes;
 }
 
 // Derive wrapping key using PBKDF2 with Web Crypto API
@@ -49,7 +48,7 @@ async function deriveWrappingKey(passcode: string, pepper: string, salt: Uint8Ar
   const derivedKey = await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt.buffer,
+      salt: salt as BufferSource,
       iterations: 100000,
       hash: 'SHA-256',
     },
@@ -67,8 +66,8 @@ async function deriveWrappingKey(passcode: string, pepper: string, salt: Uint8Ar
 // Encrypt data with AES-GCM
 async function encryptAESGCM(data: Uint8Array, key: Uint8Array): Promise<{ ciphertext: Uint8Array; iv: Uint8Array }> {
   const iv = generateRandomBytes(12);
-  const cryptoKey = await crypto.subtle.importKey('raw', key.buffer, 'AES-GCM', false, ['encrypt']);
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv.buffer }, cryptoKey, data.buffer);
+  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-GCM', false, ['encrypt']);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, cryptoKey, data as BufferSource);
 
   return {
     ciphertext: new Uint8Array(ciphertext),
@@ -78,8 +77,8 @@ async function encryptAESGCM(data: Uint8Array, key: Uint8Array): Promise<{ ciphe
 
 // Decrypt data with AES-GCM
 async function decryptAESGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array): Promise<Uint8Array> {
-  const cryptoKey = await crypto.subtle.importKey('raw', key.buffer, 'AES-GCM', false, ['decrypt']);
-  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv.buffer }, cryptoKey, ciphertext.buffer);
+  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-GCM', false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, cryptoKey, ciphertext as BufferSource);
 
   return new Uint8Array(decrypted);
 }
@@ -133,11 +132,11 @@ export async function decryptData(encryptedBlob: string, passcode: string, peppe
     const encryptedData: EncryptedData = JSON.parse(atob(encryptedBlob));
 
     // Convert base64 back to Uint8Array
-    const ciphertext = new Uint8Array(base64ToArrayBuffer(encryptedData.ciphertext));
-    const iv = new Uint8Array(base64ToArrayBuffer(encryptedData.iv));
-    const wrappedDEK = new Uint8Array(base64ToArrayBuffer(encryptedData.wrappedDEK));
-    const ivWrap = new Uint8Array(base64ToArrayBuffer(encryptedData.ivWrap));
-    const wrapSalt = new Uint8Array(base64ToArrayBuffer(encryptedData.wrapSalt));
+    const ciphertext = base64ToArrayBuffer(encryptedData.ciphertext);
+    const iv = base64ToArrayBuffer(encryptedData.iv);
+    const wrappedDEK = base64ToArrayBuffer(encryptedData.wrappedDEK);
+    const ivWrap = base64ToArrayBuffer(encryptedData.ivWrap);
+    const wrapSalt = base64ToArrayBuffer(encryptedData.wrapSalt);
 
     // Derive wrapping key
     const wrappingKey = await deriveWrappingKey(passcode, pepper, wrapSalt);
@@ -204,8 +203,8 @@ export function secureClearObject(obj: Record<string, unknown>): void {
         obj[key] = '';
       } else if (obj[key] instanceof Uint8Array) {
         obj[key].fill(0);
-      } else if (typeof obj[key] === 'object') {
-        secureClearObject(obj[key]);
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        secureClearObject(obj[key] as Record<string, unknown>);
       }
     });
   }

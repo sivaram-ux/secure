@@ -30,22 +30,22 @@ export function handleSecureError(error: unknown, context: string): ErrorDetails
   let userMessage = SAFE_ERROR_MESSAGES.UNKNOWN_ERROR;
   let code = 'UNKNOWN';
 
-  if (error?.name === 'TypeError' && error?.message?.includes('fetch')) {
+  if ((error as {name?: string})?.name === 'TypeError' && (error as {message?: string})?.message?.includes('fetch')) {
     userMessage = SAFE_ERROR_MESSAGES.NETWORK_ERROR;
     code = 'NETWORK';
-  } else if (error?.message?.includes('encrypt')) {
+  } else if ((error as {message?: string})?.message?.includes('encrypt')) {
     userMessage = SAFE_ERROR_MESSAGES.ENCRYPTION_FAILED;
     code = 'ENCRYPTION';
-  } else if (error?.message?.includes('decrypt')) {
+  } else if ((error as {message?: string})?.message?.includes('decrypt')) {
     userMessage = SAFE_ERROR_MESSAGES.DECRYPTION_FAILED;
     code = 'DECRYPTION';
-  } else if (error?.code === 'auth/') {
+  } else if ((error as {code?: string})?.code === 'auth/') {
     userMessage = SAFE_ERROR_MESSAGES.AUTH_ERROR;
     code = 'AUTH';
-  } else if (error?.status === 403) {
+  } else if ((error as {status?: number})?.status === 403) {
     userMessage = SAFE_ERROR_MESSAGES.PERMISSION_ERROR;
     code = 'PERMISSION';
-  } else if (error?.status === 429) {
+  } else if ((error as {status?: number})?.status === 429) {
     userMessage = SAFE_ERROR_MESSAGES.RATE_LIMIT;
     code = 'RATE_LIMIT';
   }
