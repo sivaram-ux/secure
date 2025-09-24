@@ -30,12 +30,9 @@ function isAllowedDomain(origin: string | null): boolean {
     'https://localhost:3000',
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
     process.env.NEXT_PUBLIC_APP_URL,
+    // Add specific allowed domains from environment variable
+    ...(process.env.ALLOWED_DOMAINS ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim()) : []),
   ].filter(Boolean);
-
-  // Also allow any Vercel deployment domains
-  if (origin.includes('.vercel.app')) {
-    return true;
-  }
 
   return allowedDomains.some(domain => origin === domain || origin.startsWith(domain as string));
 }
