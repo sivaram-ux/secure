@@ -32,6 +32,11 @@ function isAllowedDomain(origin: string | null): boolean {
     process.env.NEXT_PUBLIC_APP_URL,
   ].filter(Boolean);
 
+  // Also allow any Vercel deployment domains
+  if (origin.includes('.vercel.app')) {
+    return true;
+  }
+
   return allowedDomains.some(domain => origin === domain || origin.startsWith(domain as string));
 }
 
