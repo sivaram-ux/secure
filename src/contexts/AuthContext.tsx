@@ -53,8 +53,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setPepper(data.pepper);
             setLastActivity(Date.now());
           } else {
-            console.error('Failed to get pepper:', response.status);
-            await signOut(auth);
+            // For unauthorized users, show fake success briefly then fake error
+            if (response.status === 403) {
+              // Let them think they're logged in for a moment
+              console.log('✅ Firebase Auth Tutorial - Login successful!');
+              console.log('📚 User authenticated, loading tutorial data...');
+
+              // Show fake success for 2-3 seconds, then fake error
+              setTimeout(() => {
+                console.error('❌ Tutorial Error: Firebase configuration issue detected');
+                console.error('📝 Common issue in Firebase tutorials - session expired');
+                alert('Firebase Tutorial Demo: Session configuration error. This is normal in tutorial environments.');
+                signOut(auth);
+              }, 2500);
+            } else {
+              console.error('Failed to get pepper:', response.status);
+              await signOut(auth);
+            }
           }
         } catch (error) {
           console.error('Error getting pepper:', error);
@@ -114,7 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Try popup first, fallback to redirect if it fails
       try {
         const result = await signInWithPopup(auth, googleProvider);
-        console.log('Sign-in successful:', result.user?.email);
+        console.log('🔥 Firebase Auth Tutorial: Sign-in successful!');
+        console.log('📧 Email:', result.user?.email);
+        console.log('📝 Next: Checking tutorial access permissions...');
       } catch (popupError: unknown) {
         if ((popupError as {code?: string}).code === 'auth/popup-blocked' || (popupError as {code?: string}).code === 'auth/popup-closed-by-user') {
           console.log('Popup blocked or closed, trying redirect method...');
