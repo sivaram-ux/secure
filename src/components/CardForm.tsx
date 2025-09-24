@@ -200,17 +200,17 @@ export default function CardForm({ editingCard, editingCardData, onSave, onCance
 
           <div className="flex space-x-3 pt-4">
             <button
-              type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
-            >
-              {editingCard ? 'Update Card' : 'Save Card'}
-            </button>
-            <button
               type="button"
               onClick={onCancel}
               className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
             >
               Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+            >
+              {editingCard ? 'Update Card' : 'Save Card'}
             </button>
           </div>
         </form>

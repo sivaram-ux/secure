@@ -42,7 +42,7 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
   const [editingCardData, setEditingCardData] = useState<CardData | null>(null);
   const [passcode, setPasscode] = useState('');
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<() => void>(() => {});
+  const [pendingAction, setPendingAction] = useState<(passcode: string) => void>(() => () => {});
 
   useEffect(() => {
     if (!user) return;
@@ -87,29 +87,49 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     setDecryptedCards(newDecryptedCards);
   };
 
-  const requirePasscode = (action: () => void) => {
-    setPendingAction(() => action);
+  const requirePasscode = (action: (passcode: string) => void) => {
+    console.log('requirePasscode called:', { decryptAllMode, hasGlobalPasscode: !!globalPasscode, hasPasscode: !!passcode });
+
+    // If decrypt all is active, we already have the passcode
+    if (decryptAllMode && globalPasscode) {
+      console.log('Using global passcode for action');
+      action(globalPasscode);
+      return;
+    }
+
+    console.log('Showing passcode modal for action');
+    setPendingAction(() => (userPasscode: string) => action(userPasscode));
     setShowPasscodeModal(true);
   };
 
   const executeWithPasscode = async () => {
     if (!passcode.trim()) return;
+    console.log('executeWithPasscode called with passcode length:', passcode.length);
     setShowPasscodeModal(false);
     try {
-      await pendingAction();
+      console.log('About to execute pending action with passcode...');
+      await pendingAction(passcode);
+      console.log('Pending action completed successfully');
+      // Clear passcode after successful action, but only if not in decrypt all mode
+      if (!decryptAllMode) {
+        setPasscode('');
+      }
     } catch (error) {
       console.error('Action failed:', error);
       alert('Operation failed. Please check your passcode and try again.');
-      setPasscode('');
+      // Only clear passcode on error if not in decrypt all mode
+      if (!decryptAllMode) {
+        setPasscode('');
+      }
     }
-    // Don't clear passcode here - let individual actions handle it
   };
 
   const saveCard = async (cardData: CardData) => {
-    if (!user || !pepper || !passcode) return;
+    const effectivePasscode = passcode || globalPasscode;
+    if (!user || !pepper || !effectivePasscode) return;
 
     try {
-      const encryptedBlob = await encryptData(cardData, passcode, pepper);
+      const encryptedBlob = await encryptData(cardData, effectivePasscode, pepper);
 
       if (editingCard) {
         await updateDoc(doc(db, 'cards', editingCard.id), {
@@ -133,17 +153,27 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     }
   };
 
-  const viewCard = async (card: EncryptedCard) => {
-    if (!pepper || !passcode) return;
+  const viewCard = async (card: EncryptedCard, userPasscode?: string) => {
+    const effectivePasscode = userPasscode || passcode || globalPasscode;
+    console.log('viewCard called for card:', card.cardName, 'passcode length:', effectivePasscode?.length || 0);
+
+    if (!pepper || !effectivePasscode) {
+      console.log('Missing requirements:', { hasPepper: !!pepper, hasPasscode: !!effectivePasscode });
+      return;
+    }
 
     try {
-      const decryptedData = await decryptData(card.encryptedBlob, passcode, pepper);
+      console.log('Attempting to decrypt card data...');
+      const decryptedData = await decryptData(card.encryptedBlob, effectivePasscode, pepper);
+      console.log('Decryption successful, updating state...');
 
       // Add to decrypted cards map and individually viewed set
       setDecryptedCards(prev => new Map(prev.set(card.id, decryptedData as CardData)));
       setIndividuallyViewedCards(prev => new Set(prev.add(card.id)));
-      setPasscode('');
+
+      console.log('State updated successfully');
     } catch (error) {
+      console.error('viewCard error:', error);
       showSecureAlert(error, 'CardManager.viewCard');
     }
   };
@@ -161,15 +191,19 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     });
   };
 
-  const editCard = async (card: EncryptedCard) => {
-    if (!pepper || !passcode) return;
+  const editCard = async (card: EncryptedCard, userPasscode?: string) => {
+    const effectivePasscode = userPasscode || passcode || globalPasscode;
+    if (!pepper || !effectivePasscode) return;
 
     try {
-      const decryptedData = await decryptData(card.encryptedBlob, passcode, pepper);
+      const decryptedData = await decryptData(card.encryptedBlob, effectivePasscode, pepper);
       setEditingCard(card);
       setEditingCardData(decryptedData as CardData);
       setShowForm(true);
-      // Don't clear passcode here - keep it for saving the edited card
+      // Keep the effective passcode for saving
+      if (effectivePasscode) {
+        setPasscode(effectivePasscode);
+      }
     } catch (error) {
       showSecureAlert(error, 'CardManager.editCard');
     }
@@ -203,7 +237,7 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Credit Cards</h2>
         <button
-          onClick={() => requirePasscode(() => setShowForm(true))}
+          onClick={() => requirePasscode((userPasscode) => { setPasscode(userPasscode); setShowForm(true); })}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,7 +363,7 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
                         </button>
                       )}
                       <button
-                        onClick={() => requirePasscode(() => editCard(card))}
+                        onClick={() => requirePasscode((userPasscode) => editCard(card, userPasscode))}
                         className="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium py-1 px-2 rounded-md transition-colors"
                       >
                         Edit
@@ -348,13 +382,13 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
                     <h3 className="text-lg font-medium text-gray-900 mb-4">{card.cardName}</h3>
                     <div className="flex space-x-3">
                       <button
-                        onClick={() => requirePasscode(() => viewCard(card))}
+                        onClick={() => requirePasscode((userPasscode) => viewCard(card, userPasscode))}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors"
                       >
                         View
                       </button>
                       <button
-                        onClick={() => requirePasscode(() => editCard(card))}
+                        onClick={() => requirePasscode((userPasscode) => editCard(card, userPasscode))}
                         className="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors"
                       >
                         Edit
@@ -379,32 +413,34 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Enter Passcode</h3>
-            <input
-              type="password"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              placeholder="Your encryption passcode"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              onKeyPress={(e) => e.key === 'Enter' && executeWithPasscode()}
-              autoFocus
-            />
-            <div className="mt-4 flex space-x-3">
-              <button
-                onClick={executeWithPasscode}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
-              >
-                Continue
-              </button>
-              <button
-                onClick={() => {
-                  setShowPasscodeModal(false);
-                  setPasscode('');
-                }}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+            <form onSubmit={(e) => { e.preventDefault(); executeWithPasscode(); }}>
+              <input
+                type="password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="Your encryption passcode"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+              />
+              <div className="mt-4 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasscodeModal(false);
+                    setPasscode('');
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -415,7 +451,8 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
           editingCard={editingCard}
           editingCardData={editingCardData}
           onSave={(cardData) => {
-            if (passcode) {
+            // Use existing passcode if available (from decrypt all or previous entry)
+            if (passcode || globalPasscode) {
               saveCard(cardData);
             } else {
               setPendingAction(() => () => saveCard(cardData));

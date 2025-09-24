@@ -83,6 +83,13 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
   };
 
   const requirePasscode = (action: () => void) => {
+    // If decrypt all is active, we already have the passcode
+    if (decryptAllMode && globalPasscode) {
+      setPasscode(globalPasscode);
+      action();
+      return;
+    }
+
     setPendingAction(() => action);
     setShowPasscodeModal(true);
   };
@@ -95,16 +102,23 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     } catch (error) {
       console.error('Action failed:', error);
       alert('Operation failed. Please check your passcode and try again.');
+      // Only clear passcode on error if not in decrypt all mode
+      if (!decryptAllMode) {
+        setPasscode('');
+      }
+    }
+    // Don't clear passcode here if in decrypt all mode - keep it for reuse
+    if (!decryptAllMode) {
       setPasscode('');
     }
-    // Don't clear passcode here - let individual actions handle it
   };
 
   const saveItem = async (itemData: OtherData) => {
-    if (!user || !pepper || !passcode) return;
+    const effectivePasscode = passcode || globalPasscode;
+    if (!user || !pepper || !effectivePasscode) return;
 
     try {
-      const encryptedBlob = await encryptData(itemData, passcode, pepper);
+      const encryptedBlob = await encryptData(itemData, effectivePasscode, pepper);
 
       if (editingItem) {
         await updateDoc(doc(db, 'other', editingItem.id), {
@@ -130,15 +144,20 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
   };
 
   const viewItem = async (item: EncryptedOther) => {
-    if (!pepper || !passcode) return;
+    const effectivePasscode = passcode || globalPasscode;
+    if (!pepper || !effectivePasscode) return;
 
     try {
-      const decryptedData = await decryptData(item.encryptedBlob, passcode, pepper);
+      const decryptedData = await decryptData(item.encryptedBlob, effectivePasscode, pepper);
 
       // Add to decrypted items map and individually viewed set
       setDecryptedItems(prev => new Map(prev.set(item.id, decryptedData as OtherData)));
       setIndividuallyViewedItems(prev => new Set(prev.add(item.id)));
-      setPasscode('');
+
+      // Only clear passcode if not in decrypt all mode
+      if (!decryptAllMode) {
+        setPasscode('');
+      }
     } catch (error) {
       console.error('Decrypt error:', error);
       alert('Failed to decrypt item. Please check your passcode.');
@@ -159,14 +178,18 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
   };
 
   const editItem = async (item: EncryptedOther) => {
-    if (!pepper || !passcode) return;
+    const effectivePasscode = passcode || globalPasscode;
+    if (!pepper || !effectivePasscode) return;
 
     try {
-      const decryptedData = await decryptData(item.encryptedBlob, passcode, pepper);
+      const decryptedData = await decryptData(item.encryptedBlob, effectivePasscode, pepper);
       setEditingItem(item);
       setEditingItemData(decryptedData as OtherData);
       setShowForm(true);
-      // Don't clear passcode here - keep it for saving the edited item
+      // Keep the effective passcode for saving
+      if (!passcode && globalPasscode) {
+        setPasscode(globalPasscode);
+      }
     } catch (error) {
       console.error('Decrypt error:', error);
       alert('Failed to decrypt item. Please check your passcode.');
@@ -382,32 +405,34 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Enter Passcode</h3>
-            <input
-              type="password"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              placeholder="Your encryption passcode"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              onKeyPress={(e) => e.key === 'Enter' && executeWithPasscode()}
-              autoFocus
-            />
-            <div className="mt-4 flex space-x-3">
-              <button
-                onClick={executeWithPasscode}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
-              >
-                Continue
-              </button>
-              <button
-                onClick={() => {
-                  setShowPasscodeModal(false);
-                  setPasscode('');
-                }}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+            <form onSubmit={(e) => { e.preventDefault(); executeWithPasscode(); }}>
+              <input
+                type="password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="Your encryption passcode"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+              />
+              <div className="mt-4 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasscodeModal(false);
+                    setPasscode('');
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -418,7 +443,8 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
           editingItem={editingItem}
           editingItemData={editingItemData}
           onSave={(itemData) => {
-            if (passcode) {
+            // Use existing passcode if available (from decrypt all or previous entry)
+            if (passcode || globalPasscode) {
               saveItem(itemData);
             } else {
               setPendingAction(() => () => saveItem(itemData));
