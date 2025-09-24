@@ -59,16 +59,6 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     return unsubscribe;
   }, [user]);
 
-  // Handle decrypt all mode
-  useEffect(() => {
-    if (decryptAllMode && globalPasscode && pepper) {
-      decryptAllCards();
-    } else if (!decryptAllMode) {
-      setDecryptedCards(new Map());
-      setIndividuallyViewedCards(new Set());
-    }
-  }, [decryptAllMode, globalPasscode, cards, pepper, decryptAllCards]);
-
   const decryptAllCards = React.useCallback(async () => {
     if (!globalPasscode || !pepper) return;
 
@@ -85,6 +75,16 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
 
     setDecryptedCards(newDecryptedCards);
   }, [globalPasscode, pepper, cards]);
+
+  // Handle decrypt all mode
+  useEffect(() => {
+    if (decryptAllMode && globalPasscode && pepper) {
+      decryptAllCards();
+    } else if (!decryptAllMode) {
+      setDecryptedCards(new Map());
+      setIndividuallyViewedCards(new Set());
+    }
+  }, [decryptAllMode, globalPasscode, cards, pepper, decryptAllCards]);
 
   const requirePasscode = (action: (passcode: string) => void) => {
     console.log('requirePasscode called:', { decryptAllMode, hasGlobalPasscode: !!globalPasscode, hasPasscode: !!passcode });

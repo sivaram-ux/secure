@@ -54,16 +54,6 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     return unsubscribe;
   }, [user]);
 
-  // Handle decrypt all mode
-  useEffect(() => {
-    if (decryptAllMode && globalPasscode && pepper) {
-      decryptAllOtherItems();
-    } else if (!decryptAllMode) {
-      setDecryptedItems(new Map());
-      setIndividuallyViewedItems(new Set());
-    }
-  }, [decryptAllMode, globalPasscode, items, pepper, decryptAllOtherItems]);
-
   const decryptAllOtherItems = React.useCallback(async () => {
     if (!globalPasscode || !pepper) return;
 
@@ -80,6 +70,16 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
 
     setDecryptedItems(newDecryptedItems);
   }, [globalPasscode, pepper, items]);
+
+  // Handle decrypt all mode
+  useEffect(() => {
+    if (decryptAllMode && globalPasscode && pepper) {
+      decryptAllOtherItems();
+    } else if (!decryptAllMode) {
+      setDecryptedItems(new Map());
+      setIndividuallyViewedItems(new Set());
+    }
+  }, [decryptAllMode, globalPasscode, items, pepper, decryptAllOtherItems]);
 
   const requirePasscode = (action: () => void) => {
     // If decrypt all is active, we already have the passcode
