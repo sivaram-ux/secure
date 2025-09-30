@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { encryptData, decryptData, secureClipboardCopy } from '@/lib/crypto';
 import { showSecureAlert } from '@/lib/errorHandler';
+import { secureLog } from '@/lib/logger';
 import CardForm from './CardForm';
 
 export interface CardData extends Record<string, unknown> {
@@ -71,7 +72,7 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
         const decryptedData = await decryptData(card.encryptedBlob, globalPasscode, pepper);
         newDecryptedCards.set(card.id, decryptedData as CardData);
       } catch (error) {
-        console.error(`Failed to decrypt card ${card.cardName}:`, error);
+        secureLog.error(`Failed to decrypt card ${card.cardName}:`, error);
       }
     }
 
@@ -89,34 +90,34 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
   }, [decryptAllMode, globalPasscode, cards, pepper, decryptAllCards]);
 
   const requirePasscode = (action: (passcode: string) => void) => {
-    console.log('requirePasscode called:', { decryptAllMode, hasGlobalPasscode: !!globalPasscode, hasPasscode: !!passcode });
+    secureLog.debug('requirePasscode called:', { decryptAllMode, hasGlobalPasscode: !!globalPasscode, hasPasscode: !!passcode });
 
     // If decrypt all is active, we already have the passcode
     if (decryptAllMode && globalPasscode) {
-      console.log('Using global passcode for action');
+      secureLog.debug('Using global passcode for action');
       action(globalPasscode);
       return;
     }
 
-    console.log('Showing passcode modal for action');
+    secureLog.debug('Showing passcode modal for action');
     setPendingAction(() => (userPasscode: string) => action(userPasscode));
     setShowPasscodeModal(true);
   };
 
   const executeWithPasscode = async () => {
     if (!passcode.trim()) return;
-    console.log('executeWithPasscode called with passcode length:', passcode.length);
+    secureLog.debug('executeWithPasscode called with passcode length:', passcode.length);
     setShowPasscodeModal(false);
     try {
-      console.log('About to execute pending action with passcode...');
+      secureLog.debug('About to execute pending action with passcode...');
       await pendingAction(passcode);
-      console.log('Pending action completed successfully');
+      secureLog.debug('Pending action completed successfully');
       // Clear passcode after successful action, but only if not in decrypt all mode
       if (!decryptAllMode) {
         setPasscode('');
       }
     } catch (error) {
-      console.error('Action failed:', error);
+      secureLog.error('Action failed:', error);
       alert('Operation failed. Please check your passcode and try again.');
       // Only clear passcode on error if not in decrypt all mode
       if (!decryptAllMode) {
@@ -156,25 +157,25 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
 
   const viewCard = async (card: EncryptedCard, userPasscode?: string) => {
     const effectivePasscode = userPasscode || passcode || globalPasscode;
-    console.log('viewCard called for card:', card.cardName, 'passcode length:', effectivePasscode?.length || 0);
+    secureLog.debug('viewCard called for card:', card.cardName, 'passcode length:', effectivePasscode?.length || 0);
 
     if (!pepper || !effectivePasscode) {
-      console.log('Missing requirements:', { hasPepper: !!pepper, hasPasscode: !!effectivePasscode });
+      secureLog.debug('Missing requirements:', { hasPepper: !!pepper, hasPasscode: !!effectivePasscode });
       return;
     }
 
     try {
-      console.log('Attempting to decrypt card data...');
+      secureLog.debug('Attempting to decrypt card data...');
       const decryptedData = await decryptData(card.encryptedBlob, effectivePasscode, pepper);
-      console.log('Decryption successful, updating state...');
+      secureLog.debug('Decryption successful, updating state...');
 
       // Add to decrypted cards map and individually viewed set
       setDecryptedCards(prev => new Map(prev.set(card.id, decryptedData as CardData)));
       setIndividuallyViewedCards(prev => new Set(prev.add(card.id)));
 
-      console.log('State updated successfully');
+      secureLog.debug('State updated successfully');
     } catch (error) {
-      console.error('viewCard error:', error);
+      secureLog.error('viewCard error:', error);
       showSecureAlert(error, 'CardManager.viewCard');
     }
   };
@@ -216,7 +217,7 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     try {
       await deleteDoc(doc(db, 'cards', cardId));
     } catch (error) {
-      console.error('Delete error:', error);
+      secureLog.error('Delete error:', error);
       alert('Failed to delete card. Please try again.');
     }
   };

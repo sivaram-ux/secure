@@ -5,6 +5,7 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { encryptData, decryptData, secureClipboardCopy } from '@/lib/crypto';
+import { secureLog } from '@/lib/logger';
 import OtherForm from './OtherForm';
 
 export interface OtherData extends Record<string, unknown> {
@@ -66,7 +67,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
         const decryptedData = await decryptData(item.encryptedBlob, globalPasscode, pepper);
         newDecryptedItems.set(item.id, decryptedData as OtherData);
       } catch (error) {
-        console.error(`Failed to decrypt item ${item.itemName}:`, error);
+        secureLog.error(`Failed to decrypt item ${item.itemName}:`, error);
       }
     }
 
@@ -101,7 +102,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     try {
       await pendingAction();
     } catch (error) {
-      console.error('Action failed:', error);
+      secureLog.error('Action failed:', error);
       alert('Operation failed. Please check your passcode and try again.');
       // Only clear passcode on error if not in decrypt all mode
       if (!decryptAllMode) {
@@ -139,7 +140,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
       setEditingItemData(null);
       setPasscode('');
     } catch (error) {
-      console.error('Save error:', error);
+      secureLog.error('Save error:', error);
       alert('Failed to save item. Please try again.');
     }
   };
@@ -160,7 +161,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
         setPasscode('');
       }
     } catch (error) {
-      console.error('Decrypt error:', error);
+      secureLog.error('Decrypt error:', error);
       alert('Failed to decrypt item. Please check your passcode.');
     }
   };
@@ -192,7 +193,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
         setPasscode(globalPasscode);
       }
     } catch (error) {
-      console.error('Decrypt error:', error);
+      secureLog.error('Decrypt error:', error);
       alert('Failed to decrypt item. Please check your passcode.');
     }
   };
@@ -203,7 +204,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     try {
       await deleteDoc(doc(db, 'other', itemId));
     } catch (error) {
-      console.error('Delete error:', error);
+      secureLog.error('Delete error:', error);
       alert('Failed to delete item. Please try again.');
     }
   };

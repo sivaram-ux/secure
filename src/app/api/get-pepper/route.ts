@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateServerEnvironmentSecurity } from '@/lib/integrity';
+import { secureLog } from '@/lib/logger';
 
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Check domain restrictions
     if (!isAllowedDomain(origin) && !isAllowedDomain(referer)) {
-      console.warn('Pepper request from unauthorized domain:', { origin, referer });
+      secureLog.security('Pepper request from unauthorized domain:', { origin, referer });
       return NextResponse.json({ error: 'Unauthorized domain' }, { status: 403 });
     }
 
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ pepper });
   } catch (error) {
-    console.error('Pepper endpoint error:', error);
+    secureLog.error('Pepper endpoint error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

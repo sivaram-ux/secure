@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { secureLog } from './logger';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -38,7 +39,7 @@ googleProvider.setCustomParameters({
 
 // Debug Firebase initialization
 if (typeof window !== 'undefined') {
-  console.log('🔥 Firebase initialized successfully');
-  console.log('Project ID:', firebaseConfig.projectId);
-  console.log('Auth Domain:', firebaseConfig.authDomain);
+  secureLog.info('🔥 Firebase initialized successfully');
+  secureLog.info('Project ID:', firebaseConfig.projectId);
+  secureLog.info('Auth Domain:', firebaseConfig.authDomain);
 }

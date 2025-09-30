@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
+import { secureFetch, secureLog } from '@/lib/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -32,10 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for redirect result first
     getRedirectResult(auth).then(async (result) => {
       if (result) {
-        console.log('Redirect sign-in successful:', result.user?.email);
+        secureLog.info('Redirect sign-in successful:', result.user?.email);
       }
     }).catch((error) => {
-      console.error('Redirect result error:', error);
+      secureLog.error('Redirect result error:', error);
     });
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Get pepper from server after a brief delay
         setTimeout(async () => {
           try {
-            const response = await fetch('/api/get-pepper', {
+            const response = await secureFetch('/api/get-pepper', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -56,26 +57,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               body: JSON.stringify({ userEmail: user.email }),
             });
 
-            if (response.ok) {
-              const data = await response.json();
+            const data = await response.json();
+
+            // Check if we got actual pepper data or if this is a blocked user
+            if (data.pepper && data.pepper.length > 0) {
               setPepper(data.pepper);
               setLastActivity(Date.now());
               // Hide login success screen and show dashboard
               setShowingLoginSuccess(false);
+              secureLog.security('User authorized, pepper retrieved');
             } else {
-              // For unauthorized users, mark them as unauthorized
-              if (response.status === 403) {
-                setIsUnauthorized(true);
-                setShowingLoginSuccess(false);
-                // Silent for security - no console messages that hint at blocking
-              } else {
-                console.error('Failed to get pepper:', response.status);
-                await signOut(auth);
-              }
+              // For unauthorized users - no error logs, just mark as unauthorized
+              setIsUnauthorized(true);
+              setShowingLoginSuccess(false);
+              secureLog.security('User unauthorized, showing deception flow');
             }
-          } catch (error) {
-            console.error('Error getting pepper:', error);
-            await signOut(auth);
+          } catch {
+            // Completely silent - no indication of any error
+            setIsUnauthorized(true);
+            setShowingLoginSuccess(false);
+            secureLog.debug('Pepper fetch failed, treating as unauthorized');
           }
         }, 1500); // 1.5 second delay to show login success
       } else {
@@ -100,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkSession = () => {
       if (Date.now() - lastActivity > SESSION_TIMEOUT) {
-        console.warn('Session expired due to inactivity');
+        secureLog.info('Session expired due to inactivity');
         logout();
       }
     };
@@ -124,8 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      console.log('Starting Google sign-in...');
-      console.log('Firebase config check:', {
+      secureLog.debug('Starting Google sign-in...');
+      secureLog.debug('Firebase config check:', {
         apiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
         authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -134,36 +135,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Try popup first, fallback to redirect if it fails
       try {
         const result = await signInWithPopup(auth, googleProvider);
-        console.log('Authentication successful');
-        console.log('User email:', result.user?.email);
+        secureLog.info('Authentication successful');
+        secureLog.info('User email:', result.user?.email);
       } catch (popupError: unknown) {
         if ((popupError as {code?: string}).code === 'auth/popup-blocked' || (popupError as {code?: string}).code === 'auth/popup-closed-by-user') {
-          console.log('Popup blocked or closed, trying redirect method...');
+          secureLog.debug('Popup blocked or closed, trying redirect method...');
           await signInWithRedirect(auth, googleProvider);
           return; // signInWithRedirect doesn't return immediately
         }
         throw popupError; // Re-throw other errors
       }
     } catch (error: unknown) {
-      console.error('=== DETAILED SIGN IN ERROR ===');
-      console.error('Error code:', (error as {code?: string}).code);
-      console.error('Error message:', (error as {message?: string}).message);
-      console.error('Full error:', error);
-      console.error('Current URL:', window.location.href);
+      secureLog.error('=== DETAILED SIGN IN ERROR ===');
+      secureLog.error('Error code:', (error as {code?: string}).code);
+      secureLog.error('Error message:', (error as {message?: string}).message);
+      secureLog.error('Full error:', error);
+      secureLog.error('Current URL:', window.location.href);
 
       // Provide more specific error information
       if ((error as {code?: string}).code === 'auth/internal-error') {
-        console.error('🔍 FIREBASE INTERNAL ERROR DEBUGGING:');
-        console.error('1. Check if Google OAuth is enabled in Firebase Console');
-        console.error('2. Check if current domain is authorized:', window.location.hostname);
-        console.error('3. Check if Web Application OAuth client is configured');
-        console.error('4. Try opening in incognito mode');
+        secureLog.error('🔍 FIREBASE INTERNAL ERROR DEBUGGING:');
+        secureLog.error('1. Check if Google OAuth is enabled in Firebase Console');
+        secureLog.error('2. Check if current domain is authorized:', window.location.hostname);
+        secureLog.error('3. Check if Web Application OAuth client is configured');
+        secureLog.error('4. Try opening in incognito mode');
         alert(`Authentication setup error. Please check browser console for details.\nCurrent domain: ${window.location.hostname}`);
       } else if ((error as {code?: string}).code === 'auth/configuration-not-found') {
-        console.error('Firebase configuration not found');
+        secureLog.error('Firebase configuration not found');
         alert('Firebase configuration error. Please check environment variables.');
       } else if ((error as {code?: string}).code === 'auth/unauthorized-domain') {
-        console.error('Domain not authorized:', window.location.hostname);
+        secureLog.error('Domain not authorized:', window.location.hostname);
         alert(`Domain "${window.location.hostname}" is not authorized. Add it to Firebase Console.`);
       } else {
         alert(`Authentication failed: ${(error as {code?: string}).code} - ${(error as {message?: string}).message || 'Unknown error'}`);
@@ -180,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setShowingLoginSuccess(false);
       await signOut(auth);
     } catch (error) {
-      console.error('Sign out error:', error);
+      secureLog.error('Sign out error:', error);
       throw error;
     }
   };
