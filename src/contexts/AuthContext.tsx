@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   pepper: string | null;
+  isUnauthorized: boolean;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -18,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [pepper, setPepper] = useState<string | null>(null);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
 
 
@@ -53,19 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setPepper(data.pepper);
             setLastActivity(Date.now());
           } else {
-            // For unauthorized users, show fake success briefly then fake error
+            // For unauthorized users, immediately mark them as unauthorized
             if (response.status === 403) {
-              // Let them think they're logged in for a moment
-              console.log('✅ Firebase Auth Tutorial - Login successful!');
-              console.log('📚 User authenticated, loading tutorial data...');
-
-              // Show fake success for 2-3 seconds, then fake error
-              setTimeout(() => {
-                console.error('❌ Tutorial Error: Firebase configuration issue detected');
-                console.error('📝 Common issue in Firebase tutorials - session expired');
-                alert('Firebase Tutorial Demo: Session configuration error. This is normal in tutorial environments.');
-                signOut(auth);
-              }, 2500);
+              setIsUnauthorized(true);
+              // Silent for security - no console messages that hint at blocking
             } else {
               console.error('Failed to get pepper:', response.status);
               await signOut(auth);
@@ -77,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setPepper(null);
+        setIsUnauthorized(false);
       }
 
       setLoading(false);
@@ -129,9 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Try popup first, fallback to redirect if it fails
       try {
         const result = await signInWithPopup(auth, googleProvider);
-        console.log('🔥 Firebase Auth Tutorial: Sign-in successful!');
-        console.log('📧 Email:', result.user?.email);
-        console.log('📝 Next: Checking tutorial access permissions...');
+        console.log('Authentication successful');
+        console.log('User email:', result.user?.email);
       } catch (popupError: unknown) {
         if ((popupError as {code?: string}).code === 'auth/popup-blocked' || (popupError as {code?: string}).code === 'auth/popup-closed-by-user') {
           console.log('Popup blocked or closed, trying redirect method...');
@@ -172,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setPepper(null);
+      setIsUnauthorized(false);
       await signOut(auth);
     } catch (error) {
       console.error('Sign out error:', error);
@@ -183,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     loading,
     pepper,
+    isUnauthorized,
     signInWithGoogle,
     logout,
   };
