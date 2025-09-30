@@ -6,7 +6,7 @@ import LoginPage from '@/components/LoginPage';
 import AutoLogoutScreen from '@/components/AutoLogoutScreen';
 
 export default function Home() {
-  const { user, loading, isUnauthorized } = useAuth();
+  const { user, loading, isUnauthorized, showingLoginSuccess } = useAuth();
 
   if (loading) {
     return (
@@ -16,8 +16,14 @@ export default function Home() {
     );
   }
 
+  // Show login success screen for everyone who just logged in
+  if (user && showingLoginSuccess) {
+    return <AutoLogoutScreen showLogoutButton={false} />;
+  }
+
+  // Show logout screen for unauthorized users
   if (user && isUnauthorized) {
-    return <AutoLogoutScreen />;
+    return <AutoLogoutScreen showLogoutButton={true} />;
   }
 
   return user ? <Dashboard /> : <LoginPage />;

@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   pepper: string | null;
   isUnauthorized: boolean;
+  showingLoginSuccess: boolean;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [pepper, setPepper] = useState<string | null>(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [showingLoginSuccess, setShowingLoginSuccess] = useState(false);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
 
 
@@ -40,37 +42,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user);
 
       if (user) {
-        // Get pepper from server
-        try {
-          const response = await fetch('/api/get-pepper', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ userEmail: user.email }),
-          });
+        // Show login success screen for everyone initially
+        setShowingLoginSuccess(true);
 
-          if (response.ok) {
-            const data = await response.json();
-            setPepper(data.pepper);
-            setLastActivity(Date.now());
-          } else {
-            // For unauthorized users, immediately mark them as unauthorized
-            if (response.status === 403) {
-              setIsUnauthorized(true);
-              // Silent for security - no console messages that hint at blocking
+        // Get pepper from server after a brief delay
+        setTimeout(async () => {
+          try {
+            const response = await fetch('/api/get-pepper', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ userEmail: user.email }),
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              setPepper(data.pepper);
+              setLastActivity(Date.now());
+              // Hide login success screen and show dashboard
+              setShowingLoginSuccess(false);
             } else {
-              console.error('Failed to get pepper:', response.status);
-              await signOut(auth);
+              // For unauthorized users, mark them as unauthorized
+              if (response.status === 403) {
+                setIsUnauthorized(true);
+                setShowingLoginSuccess(false);
+                // Silent for security - no console messages that hint at blocking
+              } else {
+                console.error('Failed to get pepper:', response.status);
+                await signOut(auth);
+              }
             }
+          } catch (error) {
+            console.error('Error getting pepper:', error);
+            await signOut(auth);
           }
-        } catch (error) {
-          console.error('Error getting pepper:', error);
-          await signOut(auth);
-        }
+        }, 1500); // 1.5 second delay to show login success
       } else {
         setPepper(null);
         setIsUnauthorized(false);
+        setShowingLoginSuccess(false);
       }
 
       setLoading(false);
@@ -166,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setPepper(null);
       setIsUnauthorized(false);
+      setShowingLoginSuccess(false);
       await signOut(auth);
     } catch (error) {
       console.error('Sign out error:', error);
@@ -178,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     pepper,
     isUnauthorized,
+    showingLoginSuccess,
     signInWithGoogle,
     logout,
   };

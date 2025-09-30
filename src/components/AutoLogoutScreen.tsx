@@ -1,19 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function AutoLogoutScreen() {
+interface AutoLogoutScreenProps {
+  showLogoutButton?: boolean;
+}
+
+export default function AutoLogoutScreen({ showLogoutButton = false }: AutoLogoutScreenProps) {
   const { logout } = useAuth();
-
-  useEffect(() => {
-    // Auto logout after 2 seconds
-    const timer = setTimeout(() => {
-      logout();
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [logout]);
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center">
@@ -28,20 +22,32 @@ export default function AutoLogoutScreen() {
           <p className="text-gray-600 mb-4">Authentication completed successfully.</p>
         </div>
 
-        <div className="text-sm text-gray-500">
-          <div className="animate-pulse mb-2">Auto-logging out in 2 seconds...</div>
-          <div className="w-48 mx-auto bg-gray-200 rounded-full h-1">
-            <div className="bg-blue-500 h-1 rounded-full animate-pulse" style={{
-              animation: 'shrink 2s linear forwards'
-            }}></div>
+        {showLogoutButton ? (
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-4">Session verification complete.</p>
+            <button
+              onClick={logout}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Continue
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="text-sm text-gray-500">
+            <div className="animate-pulse mb-2">Loading your dashboard...</div>
+            <div className="w-48 mx-auto bg-gray-200 rounded-full h-1">
+              <div className="bg-blue-500 h-1 rounded-full" style={{
+                animation: 'progress 1.5s ease-in-out forwards'
+              }}></div>
+            </div>
+          </div>
+        )}
       </div>
 
       <style jsx>{`
-        @keyframes shrink {
-          from { width: 100%; }
-          to { width: 0%; }
+        @keyframes progress {
+          from { width: 0%; }
+          to { width: 100%; }
         }
       `}</style>
     </div>
