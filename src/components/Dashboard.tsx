@@ -7,7 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { secureClearObject } from '@/lib/crypto';
 import CardManager from './CardManager';
 import OtherManager from './OtherManager';
-import SearchBar from './SearchBar';
+import ExpandableSearch from './ExpandableSearch';
 import SearchResultsInfo from './SearchResultsInfo';
 
 export default function Dashboard() {
@@ -94,6 +94,9 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Search */}
+              <ExpandableSearch onSearch={handleSearch} />
+
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
@@ -153,11 +156,6 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
-
-      {/* Search Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <SearchBar onSearch={handleSearch} />
-      </div>
 
       {/* Tab Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
