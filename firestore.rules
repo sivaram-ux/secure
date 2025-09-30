@@ -3,26 +3,42 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Cards collection rules
     match /cards/{cardId} {
-      // Users can only access their own cards
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Allow reading user's own cards
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
 
-      // Allow creation if the user is authenticated and owns the document
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Allow creation if the user is authenticated and owns the document and data is valid
+      allow create: if request.auth != null &&
+                      request.auth.uid == request.resource.data.userId &&
+                      validateCardData();
 
-      // Validate data structure for cards
-      allow write: if validateCardData();
+      // Allow updating user's own cards with valid data
+      allow update: if request.auth != null &&
+                      request.auth.uid == resource.data.userId &&
+                      request.auth.uid == request.resource.data.userId &&
+                      validateCardData();
+
+      // Allow deleting user's own cards
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
     // Other items collection rules
     match /other/{itemId} {
-      // Users can only access their own items
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Allow reading user's own items
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
 
-      // Allow creation if the user is authenticated and owns the document
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Allow creation if the user is authenticated and owns the document and data is valid
+      allow create: if request.auth != null &&
+                      request.auth.uid == request.resource.data.userId &&
+                      validateOtherData();
 
-      // Validate data structure for other items
-      allow write: if validateOtherData();
+      // Allow updating user's own items with valid data
+      allow update: if request.auth != null &&
+                      request.auth.uid == resource.data.userId &&
+                      request.auth.uid == request.resource.data.userId &&
+                      validateOtherData();
+
+      // Allow deleting user's own items
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
     // Function to validate card data structure
