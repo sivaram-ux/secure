@@ -7,6 +7,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { secureClearObject } from '@/lib/crypto';
 import CardManager from './CardManager';
 import OtherManager from './OtherManager';
+import SearchBar from './SearchBar';
+import SearchResultsInfo from './SearchResultsInfo';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -15,6 +17,8 @@ export default function Dashboard() {
   const [globalPasscode, setGlobalPasscode] = useState('');
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [decryptAllMode, setDecryptAllMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState({ cards: 0, others: 0 });
 
   const handleLogout = async () => {
     try {
@@ -26,6 +30,18 @@ export default function Dashboard() {
 
   const handleDecryptAll = () => {
     setShowPasscodeModal(true);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleCardSearchResults = (count: number) => {
+    setSearchResults(prev => ({ ...prev, cards: count }));
+  };
+
+  const handleOtherSearchResults = (count: number) => {
+    setSearchResults(prev => ({ ...prev, others: count }));
   };
 
   const executeDecryptAll = () => {
@@ -138,6 +154,11 @@ export default function Dashboard() {
         </div>
       </header>
 
+      {/* Search Bar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <SearchBar onSearch={handleSearch} />
+      </div>
+
       {/* Tab Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="border-b border-gray-200 dark:border-gray-700">
@@ -218,10 +239,30 @@ export default function Dashboard() {
 
       {/* Tab Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search Results Info */}
+        {searchQuery.trim() && (
+          <SearchResultsInfo
+            searchQuery={searchQuery}
+            totalResults={searchResults.cards + searchResults.others}
+            totalCards={searchResults.cards}
+            totalOthers={searchResults.others}
+          />
+        )}
+
         {activeTab === 'cards' ? (
-          <CardManager globalPasscode={globalPasscode} decryptAllMode={decryptAllMode} />
+          <CardManager
+            globalPasscode={globalPasscode}
+            decryptAllMode={decryptAllMode}
+            searchQuery={searchQuery}
+            onSearchResults={handleCardSearchResults}
+          />
         ) : (
-          <OtherManager globalPasscode={globalPasscode} decryptAllMode={decryptAllMode} />
+          <OtherManager
+            globalPasscode={globalPasscode}
+            decryptAllMode={decryptAllMode}
+            searchQuery={searchQuery}
+            onSearchResults={handleOtherSearchResults}
+          />
         )}
       </main>
 

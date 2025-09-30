@@ -28,9 +28,11 @@ export interface EncryptedCard {
 interface CardManagerProps {
   globalPasscode?: string;
   decryptAllMode?: boolean;
+  searchQuery?: string;
+  onSearchResults?: (count: number) => void;
 }
 
-export default function CardManager({ globalPasscode = '', decryptAllMode = false }: CardManagerProps) {
+export default function CardManager({ globalPasscode = '', decryptAllMode = false, searchQuery = '', onSearchResults }: CardManagerProps) {
   const { user, pepper } = useAuth();
   const [cards, setCards] = useState<EncryptedCard[]>([]);
   const [decryptedCards, setDecryptedCards] = useState<Map<string, CardData>>(new Map());
@@ -223,6 +225,35 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     secureClipboardCopy(text);
   };
 
+  // Filter cards based on search query
+  const filteredCards = cards.filter((card) => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+
+    // Search in card name (always available)
+    if (card.cardName.toLowerCase().includes(query)) return true;
+
+    // Search in decrypted data if available
+    const decryptedCard = decryptedCards.get(card.id);
+    if (decryptedCard) {
+      return (
+        decryptedCard.cardNumber.toLowerCase().includes(query) ||
+        decryptedCard.holderName.toLowerCase().includes(query) ||
+        `${decryptedCard.expiryMonth}/${decryptedCard.expiryYear}`.includes(query)
+      );
+    }
+
+    return false;
+  });
+
+  // Notify parent about search results
+  useEffect(() => {
+    if (onSearchResults) {
+      onSearchResults(filteredCards.length);
+    }
+  }, [filteredCards.length, onSearchResults]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -246,7 +277,7 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
         </button>
       </div>
 
-      {cards.length === 0 ? (
+      {filteredCards.length === 0 ? (
         <div className="text-center py-12">
           <svg
             className="mx-auto h-12 w-12 text-gray-400"
@@ -261,12 +292,19 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
               d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No cards</h3>
-          <p className="mt-1 text-sm text-gray-500">Get started by adding your first credit card.</p>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {searchQuery.trim() ? 'No cards found' : 'No cards'}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchQuery.trim()
+              ? `No cards match "${searchQuery}". Try a different search term.`
+              : 'Get started by adding your first credit card.'
+            }
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((card) => {
+          {filteredCards.map((card) => {
             const decryptedCard = decryptedCards.get(card.id);
             const isIndividuallyViewed = individuallyViewedCards.has(card.id);
             const showDecrypted = (decryptAllMode || isIndividuallyViewed) && decryptedCard;

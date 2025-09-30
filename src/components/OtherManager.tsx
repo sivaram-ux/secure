@@ -23,9 +23,11 @@ export interface EncryptedOther {
 interface OtherManagerProps {
   globalPasscode?: string;
   decryptAllMode?: boolean;
+  searchQuery?: string;
+  onSearchResults?: (count: number) => void;
 }
 
-export default function OtherManager({ globalPasscode = '', decryptAllMode = false }: OtherManagerProps) {
+export default function OtherManager({ globalPasscode = '', decryptAllMode = false, searchQuery = '', onSearchResults }: OtherManagerProps) {
   const { user, pepper } = useAuth();
   const [items, setItems] = useState<EncryptedOther[]>([]);
   const [decryptedItems, setDecryptedItems] = useState<Map<string, OtherData>>(new Map());
@@ -210,6 +212,37 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     secureClipboardCopy(text);
   };
 
+  // Filter items based on search query
+  const filteredItems = items.filter((item) => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+
+    // Search in item name (always available)
+    if (item.itemName.toLowerCase().includes(query)) return true;
+
+    // Search in decrypted data if available
+    const decryptedItem = decryptedItems.get(item.id);
+    if (decryptedItem) {
+      // Search in item type
+      if (decryptedItem.itemType.toLowerCase().includes(query)) return true;
+
+      // Search in field values
+      return Object.values(decryptedItem.fields).some(value =>
+        value.toLowerCase().includes(query)
+      );
+    }
+
+    return false;
+  });
+
+  // Notify parent about search results
+  useEffect(() => {
+    if (onSearchResults) {
+      onSearchResults(filteredItems.length);
+    }
+  }, [filteredItems.length, onSearchResults]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -233,7 +266,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
         </button>
       </div>
 
-      {items.length === 0 ? (
+      {filteredItems.length === 0 ? (
         <div className="text-center py-12">
           <svg
             className="mx-auto h-12 w-12 text-gray-400"
@@ -248,12 +281,19 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No items</h3>
-          <p className="mt-1 text-sm text-gray-500">Get started by adding your first secure item.</p>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {searchQuery.trim() ? 'No items found' : 'No items'}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchQuery.trim()
+              ? `No items match "${searchQuery}". Try a different search term.`
+              : 'Get started by adding your first secure item.'
+            }
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => {
+          {filteredItems.map((item) => {
             const decryptedItem = decryptedItems.get(item.id);
             const isIndividuallyViewed = individuallyViewedItems.has(item.id);
             const showDecrypted = (decryptAllMode || isIndividuallyViewed) && decryptedItem;
