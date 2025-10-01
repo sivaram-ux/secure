@@ -9,6 +9,7 @@ import CardManager from './CardManager';
 import OtherManager from './OtherManager';
 import ExpandableSearch from './ExpandableSearch';
 import SearchResultsInfo from './SearchResultsInfo';
+import ChangePasscode from './ChangePasscode';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -16,6 +17,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'cards' | 'other'>('cards');
   const [globalPasscode, setGlobalPasscode] = useState('');
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
+  const [showChangePasscode, setShowChangePasscode] = useState(false);
   const [decryptAllMode, setDecryptAllMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ cards: 0, others: 0 });
@@ -96,6 +98,17 @@ export default function Dashboard() {
             <div className="flex items-center space-x-4">
               {/* Search */}
               <ExpandableSearch onSearch={handleSearch} />
+
+              {/* Change Passcode */}
+              <button
+                onClick={() => setShowChangePasscode(true)}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
+                title="Change Passcode"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </button>
 
               {/* Theme Toggle */}
               <button
@@ -304,6 +317,11 @@ export default function Dashboard() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Change Passcode Modal */}
+      {showChangePasscode && (
+        <ChangePasscode onClose={() => setShowChangePasscode(false)} />
       )}
     </div>
   );
