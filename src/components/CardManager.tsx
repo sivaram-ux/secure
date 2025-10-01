@@ -112,10 +112,7 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
       secureLog.debug('About to execute pending action with passcode...');
       await pendingAction(passcode);
       secureLog.debug('Pending action completed successfully');
-      // Clear passcode after successful action, but only if not in decrypt all mode
-      if (!decryptAllMode) {
-        setPasscode('');
-      }
+      // Don't clear passcode here - let the action decide when to clear it
     } catch (error) {
       secureLog.error('Action failed:', error);
       alert('Operation failed. Please check your passcode and try again.');
@@ -129,30 +126,45 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
   const saveCard = async (cardData: CardData) => {
     const effectivePasscode = passcode || globalPasscode;
 
+    secureLog.debug('saveCard called', {
+      hasUser: !!user,
+      hasPepper: !!pepper,
+      hasPasscode: !!passcode,
+      hasGlobalPasscode: !!globalPasscode,
+      effectivePasscode: !!effectivePasscode
+    });
+
     if (!user) {
       alert('User not authenticated. Please log in again.');
+      secureLog.error('saveCard: No user');
       return;
     }
 
     if (!pepper) {
       alert('Security key not available. Please refresh and try again.');
+      secureLog.error('saveCard: No pepper');
       return;
     }
 
     if (!effectivePasscode) {
       alert('Passcode is required. Please enter your passcode.');
+      secureLog.error('saveCard: No passcode', { passcode, globalPasscode });
       return;
     }
 
     try {
+      secureLog.debug('Encrypting card data...');
       const encryptedBlob = await encryptData(cardData, effectivePasscode, pepper);
+      secureLog.debug('Encryption successful, saving to Firestore...');
 
       if (editingCard) {
+        secureLog.debug('Updating existing card:', editingCard.id);
         await updateDoc(doc(db, 'cards', editingCard.id), {
           cardName: cardData.cardName,
           encryptedBlob,
         });
       } else {
+        secureLog.debug('Adding new card');
         await addDoc(collection(db, 'cards'), {
           userId: user.uid,
           cardName: cardData.cardName,
@@ -160,11 +172,13 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
         });
       }
 
+      secureLog.debug('Card saved successfully');
       setShowForm(false);
       setEditingCard(null);
       setEditingCardData(null);
       setPasscode('');
     } catch (error) {
+      secureLog.error('saveCard error:', error);
       showSecureAlert(error, 'CardManager.saveCard');
     }
   };
@@ -508,10 +522,17 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
           editingCard={editingCard}
           editingCardData={editingCardData}
           onSave={(cardData) => {
+            secureLog.debug('Form onSave called', {
+              hasPasscode: !!passcode,
+              hasGlobalPasscode: !!globalPasscode,
+              cardData
+            });
             // Use existing passcode if available (from decrypt all or previous entry)
             if (passcode || globalPasscode) {
+              secureLog.debug('Calling saveCard directly with existing passcode');
               saveCard(cardData);
             } else {
+              secureLog.debug('No passcode available, showing modal');
               setPendingAction(() => () => saveCard(cardData));
               setShowPasscodeModal(true);
             }

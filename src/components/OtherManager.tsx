@@ -100,10 +100,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     setShowPasscodeModal(false);
     try {
       await pendingAction(passcode);
-      // Clear passcode after successful action, but only if not in decrypt all mode
-      if (!decryptAllMode) {
-        setPasscode('');
-      }
+      // Don't clear passcode here - let the action decide when to clear it
     } catch (error) {
       secureLog.error('Action failed:', error);
       alert('Operation failed. Please check your passcode and try again.');
