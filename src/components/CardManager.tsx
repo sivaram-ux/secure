@@ -128,7 +128,21 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
 
   const saveCard = async (cardData: CardData) => {
     const effectivePasscode = passcode || globalPasscode;
-    if (!user || !pepper || !effectivePasscode) return;
+
+    if (!user) {
+      alert('User not authenticated. Please log in again.');
+      return;
+    }
+
+    if (!pepper) {
+      alert('Security key not available. Please refresh and try again.');
+      return;
+    }
+
+    if (!effectivePasscode) {
+      alert('Passcode is required. Please enter your passcode.');
+      return;
+    }
 
     try {
       const encryptedBlob = await encryptData(cardData, effectivePasscode, pepper);
@@ -266,9 +280,14 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Credit Cards</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Credit Cards</h2>
         <button
-          onClick={() => requirePasscode((userPasscode) => { setPasscode(userPasscode); setShowForm(true); })}
+          onClick={() => {
+            requirePasscode((userPasscode) => {
+              setPasscode(userPasscode);
+              setShowForm(true);
+            });
+          }}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

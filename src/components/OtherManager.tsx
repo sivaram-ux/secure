@@ -39,7 +39,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
   const [editingItemData, setEditingItemData] = useState<OtherData | null>(null);
   const [passcode, setPasscode] = useState('');
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<() => void>(() => {});
+  const [pendingAction, setPendingAction] = useState<(passcode: string) => void>(() => () => {});
 
   useEffect(() => {
     if (!user) return;
@@ -84,15 +84,14 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     }
   }, [decryptAllMode, globalPasscode, items, pepper, decryptAllOtherItems]);
 
-  const requirePasscode = (action: () => void) => {
+  const requirePasscode = (action: (passcode: string) => void) => {
     // If decrypt all is active, we already have the passcode
     if (decryptAllMode && globalPasscode) {
-      setPasscode(globalPasscode);
-      action();
+      action(globalPasscode);
       return;
     }
 
-    setPendingAction(() => action);
+    setPendingAction(() => (userPasscode: string) => action(userPasscode));
     setShowPasscodeModal(true);
   };
 
@@ -100,7 +99,11 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     if (!passcode.trim()) return;
     setShowPasscodeModal(false);
     try {
-      await pendingAction();
+      await pendingAction(passcode);
+      // Clear passcode after successful action, but only if not in decrypt all mode
+      if (!decryptAllMode) {
+        setPasscode('');
+      }
     } catch (error) {
       secureLog.error('Action failed:', error);
       alert('Operation failed. Please check your passcode and try again.');
@@ -109,15 +112,25 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
         setPasscode('');
       }
     }
-    // Don't clear passcode here if in decrypt all mode - keep it for reuse
-    if (!decryptAllMode) {
-      setPasscode('');
-    }
   };
 
   const saveItem = async (itemData: OtherData) => {
     const effectivePasscode = passcode || globalPasscode;
-    if (!user || !pepper || !effectivePasscode) return;
+
+    if (!user) {
+      alert('User not authenticated. Please log in again.');
+      return;
+    }
+
+    if (!pepper) {
+      alert('Security key not available. Please refresh and try again.');
+      return;
+    }
+
+    if (!effectivePasscode) {
+      alert('Passcode is required. Please enter your passcode.');
+      return;
+    }
 
     try {
       const encryptedBlob = await encryptData(itemData, effectivePasscode, pepper);
@@ -255,9 +268,14 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Other Items</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Other Items</h2>
         <button
-          onClick={() => requirePasscode(() => setShowForm(true))}
+          onClick={() => {
+            requirePasscode((userPasscode) => {
+              setPasscode(userPasscode);
+              setShowForm(true);
+            });
+          }}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -395,7 +413,7 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
                         </button>
                       )}
                       <button
-                        onClick={() => requirePasscode(() => editItem(item))}
+                        onClick={() => requirePasscode((userPasscode) => { setPasscode(userPasscode); editItem(item); })}
                         className="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium py-1 px-2 rounded-md transition-colors"
                       >
                         Edit
@@ -414,13 +432,13 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
                     <h3 className="text-lg font-medium text-gray-900 mb-4">{item.itemName}</h3>
                     <div className="flex space-x-3">
                       <button
-                        onClick={() => requirePasscode(() => viewItem(item))}
+                        onClick={() => requirePasscode((userPasscode) => { setPasscode(userPasscode); viewItem(item); })}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors"
                       >
                         View
                       </button>
                       <button
-                        onClick={() => requirePasscode(() => editItem(item))}
+                        onClick={() => requirePasscode((userPasscode) => { setPasscode(userPasscode); editItem(item); })}
                         className="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors"
                       >
                         Edit
