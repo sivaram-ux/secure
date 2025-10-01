@@ -79,14 +79,28 @@ export default function ChangePasscode({ onClose }: ChangePasscodeProps) {
       secureLog.debug('Fetching all cards...');
       const cardsQuery = query(collection(db, 'cards'), where('userId', '==', user.uid));
       const cardsSnapshot = await getDocs(cardsQuery);
-      const cards = cardsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const cards = cardsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          encryptedBlob: data.encryptedBlob as string,
+          cardName: data.cardName as string
+        };
+      });
 
       // Step 3: Fetch all other items
       setProgress('Fetching all items...');
       secureLog.debug('Fetching all items...');
       const itemsQuery = query(collection(db, 'other'), where('userId', '==', user.uid));
       const itemsSnapshot = await getDocs(itemsQuery);
-      const items = itemsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const items = itemsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          encryptedBlob: data.encryptedBlob as string,
+          itemName: data.itemName as string
+        };
+      });
 
       const totalItems = cards.length + items.length;
       let processedItems = 0;
@@ -98,7 +112,7 @@ export default function ChangePasscode({ onClose }: ChangePasscodeProps) {
         setProgress(`Re-encrypting cards... (${processedItems}/${totalItems})`);
 
         // Decrypt with old passcode
-        const decryptedData = await decryptData(card.encryptedBlob as string, oldPasscode, pepper);
+        const decryptedData = await decryptData(card.encryptedBlob, oldPasscode, pepper);
 
         // Encrypt with new passcode
         const newEncryptedBlob = await encryptData(decryptedData, newPasscode, pepper);
@@ -116,7 +130,7 @@ export default function ChangePasscode({ onClose }: ChangePasscodeProps) {
         setProgress(`Re-encrypting items... (${processedItems}/${totalItems})`);
 
         // Decrypt with old passcode
-        const decryptedData = await decryptData(item.encryptedBlob as string, oldPasscode, pepper);
+        const decryptedData = await decryptData(item.encryptedBlob, oldPasscode, pepper);
 
         // Encrypt with new passcode
         const newEncryptedBlob = await encryptData(decryptedData, newPasscode, pepper);
