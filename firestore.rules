@@ -1,6 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Users collection - stores passcode hash (ONE per user)
+    match /users/{userId} {
+      // Allow reading own passcode hash
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Allow creating/updating own passcode hash
+      allow create, update: if request.auth != null &&
+                               request.auth.uid == userId &&
+                               request.resource.data.keys().hasAll(['passcodeHash']) &&
+                               request.resource.data.keys().hasOnly(['passcodeHash']) &&
+                               request.resource.data.passcodeHash is string &&
+                               request.resource.data.passcodeHash.size() > 0;
+    }
+
     // Cards collection rules
     match /cards/{cardId} {
       // Allow reading user's own cards

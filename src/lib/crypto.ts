@@ -20,6 +20,20 @@ function arrayBufferToBase64(buffer: Uint8Array): string {
   return btoa(binary);
 }
 
+// Hash passcode with SHA256 for verification (ONE hash per user)
+export async function hashPasscode(passcode: string, pepper: string): Promise<string> {
+  try {
+    const combined = passcode + pepper;
+    const combinedBytes = new TextEncoder().encode(combined);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', combinedBytes);
+    const hashArray = new Uint8Array(hashBuffer);
+    return arrayBufferToBase64(hashArray);
+  } catch (error) {
+    console.error('Hashing error:', error);
+    throw new Error('Failed to hash passcode');
+  }
+}
+
 // Convert base64 to Uint8Array
 function base64ToArrayBuffer(base64: string): Uint8Array {
   const binary = atob(base64);

@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { encryptData, decryptData, secureClipboardCopy } from '@/lib/crypto';
 import { secureLog } from '@/lib/logger';
+import { verifyPasscode } from '@/lib/passcodeVerification';
 import OtherForm from './OtherForm';
 
 export interface OtherData extends Record<string, unknown> {
@@ -130,6 +131,18 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
     }
 
     try {
+      // Verify passcode before saving
+      const { verified, isFirstTime } = await verifyPasscode(user.uid, effectivePasscode, pepper);
+
+      if (!verified) {
+        alert('❌ INCORRECT PASSCODE!\n\nUsing the wrong passcode will CORRUPT ALL YOUR DATA.\n\nPlease enter the correct passcode that you used when you first created items in your vault.');
+        return;
+      }
+
+      if (isFirstTime) {
+        secureLog.debug('First-time passcode setup - hash stored');
+      }
+
       const encryptedBlob = await encryptData(itemData, effectivePasscode, pepper);
 
       if (editingItem) {
@@ -157,9 +170,17 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
 
   const viewItem = async (item: EncryptedOther) => {
     const effectivePasscode = passcode || globalPasscode;
-    if (!pepper || !effectivePasscode) return;
+    if (!user || !pepper || !effectivePasscode) return;
 
     try {
+      // Verify passcode before decrypting
+      const { verified } = await verifyPasscode(user.uid, effectivePasscode, pepper);
+
+      if (!verified) {
+        alert('Incorrect passcode. This item was encrypted with a different passcode.');
+        return;
+      }
+
       const decryptedData = await decryptData(item.encryptedBlob, effectivePasscode, pepper);
 
       // Add to decrypted items map and individually viewed set
@@ -191,9 +212,17 @@ export default function OtherManager({ globalPasscode = '', decryptAllMode = fal
 
   const editItem = async (item: EncryptedOther) => {
     const effectivePasscode = passcode || globalPasscode;
-    if (!pepper || !effectivePasscode) return;
+    if (!user || !pepper || !effectivePasscode) return;
 
     try {
+      // Verify passcode before decrypting
+      const { verified } = await verifyPasscode(user.uid, effectivePasscode, pepper);
+
+      if (!verified) {
+        alert('Incorrect passcode. This item was encrypted with a different passcode.');
+        return;
+      }
+
       const decryptedData = await decryptData(item.encryptedBlob, effectivePasscode, pepper);
       setEditingItem(item);
       setEditingItemData(decryptedData as OtherData);

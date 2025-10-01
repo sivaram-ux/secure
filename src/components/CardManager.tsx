@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { encryptData, decryptData, secureClipboardCopy } from '@/lib/crypto';
 import { showSecureAlert } from '@/lib/errorHandler';
 import { secureLog } from '@/lib/logger';
+import { verifyPasscode } from '@/lib/passcodeVerification';
 import CardForm from './CardForm';
 
 export interface CardData extends Record<string, unknown> {
@@ -153,7 +154,20 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     }
 
     try {
-      secureLog.debug('Encrypting card data...');
+      // Verify passcode before saving
+      secureLog.debug('Verifying passcode...');
+      const { verified, isFirstTime } = await verifyPasscode(user.uid, effectivePasscode, pepper);
+
+      if (!verified) {
+        alert('❌ INCORRECT PASSCODE!\n\nUsing the wrong passcode will CORRUPT ALL YOUR DATA.\n\nPlease enter the correct passcode that you used when you first created items in your vault.');
+        return;
+      }
+
+      if (isFirstTime) {
+        secureLog.debug('First-time passcode setup - hash stored');
+      }
+
+      secureLog.debug('Passcode verified, encrypting card data...');
       const encryptedBlob = await encryptData(cardData, effectivePasscode, pepper);
       secureLog.debug('Encryption successful, saving to Firestore...');
 
@@ -187,13 +201,21 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
     const effectivePasscode = userPasscode || passcode || globalPasscode;
     secureLog.debug('viewCard called for card:', card.cardName, 'passcode length:', effectivePasscode?.length || 0);
 
-    if (!pepper || !effectivePasscode) {
-      secureLog.debug('Missing requirements:', { hasPepper: !!pepper, hasPasscode: !!effectivePasscode });
+    if (!user || !pepper || !effectivePasscode) {
+      secureLog.debug('Missing requirements:', { hasUser: !!user, hasPepper: !!pepper, hasPasscode: !!effectivePasscode });
       return;
     }
 
     try {
-      secureLog.debug('Attempting to decrypt card data...');
+      // Verify passcode before decrypting
+      const { verified } = await verifyPasscode(user.uid, effectivePasscode, pepper);
+
+      if (!verified) {
+        alert('Incorrect passcode. This card was encrypted with a different passcode.');
+        return;
+      }
+
+      secureLog.debug('Passcode verified, attempting to decrypt card data...');
       const decryptedData = await decryptData(card.encryptedBlob, effectivePasscode, pepper);
       secureLog.debug('Decryption successful, updating state...');
 
@@ -228,9 +250,17 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
 
   const editCard = async (card: EncryptedCard, userPasscode?: string) => {
     const effectivePasscode = userPasscode || passcode || globalPasscode;
-    if (!pepper || !effectivePasscode) return;
+    if (!user || !pepper || !effectivePasscode) return;
 
     try {
+      // Verify passcode before decrypting
+      const { verified } = await verifyPasscode(user.uid, effectivePasscode, pepper);
+
+      if (!verified) {
+        alert('Incorrect passcode. This card was encrypted with a different passcode.');
+        return;
+      }
+
       const decryptedData = await decryptData(card.encryptedBlob, effectivePasscode, pepper);
       setEditingCard(card);
       setEditingCardData(decryptedData as CardData);
