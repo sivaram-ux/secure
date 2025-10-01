@@ -201,6 +201,11 @@ export default function CardManager({ globalPasscode = '', decryptAllMode = fals
       setDecryptedCards(prev => new Map(prev.set(card.id, decryptedData as CardData)));
       setIndividuallyViewedCards(prev => new Set(prev.add(card.id)));
 
+      // Clear passcode after viewing (unless in decrypt all mode)
+      if (!decryptAllMode) {
+        setPasscode('');
+      }
+
       secureLog.debug('State updated successfully');
     } catch (error) {
       secureLog.error('viewCard error:', error);
